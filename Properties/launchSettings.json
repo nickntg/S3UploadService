@@ -1,0 +1,10 @@
+﻿{
+  "profiles": {
+    "S3UploadService": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
