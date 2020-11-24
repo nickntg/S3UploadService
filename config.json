@@ -1,0 +1,24 @@
+﻿[
+  {
+    "WatchFolder": "c:\\local\\dir1",
+    "DoneFolder": "c:\\local\\done\\dir1",
+    "FailFolder": "c:\\local\\fail\\dir1",
+    "MaxRetries": 0,
+    "StartKey": "key/dir1",
+    "WakeupSeconds": 10,
+    "GraceSeconds": 10,
+    "FileMask": "*.*",
+    "AddRandomGuidToFiles": true
+  },
+  {
+    "WatchFolder": "c:\\local\\dir2",
+    "DoneFolder": "c:\\local\\done\\dir2",
+    "FailFolder": "c:\\local\\fail\\dir2",
+    "MaxRetries": 0,
+    "StartKey": "key/dir2",
+    "WakeupSeconds": 10,
+    "GraceSeconds": 10,
+    "FileMask": "*.pdf",
+    "AddRandomGuidToFiles": false
+  }
+]
