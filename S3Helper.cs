@@ -41,7 +41,11 @@ namespace S3UploadService
 
         private string CreateKey(ConfigEntry configEntry, string fileName)
         {
-            var start = $"{configEntry.StartKey}/{DateTime.UtcNow:yyyy/MM/dd}/";
+            var start = $"{configEntry.StartKey}/";
+            if (configEntry.PrependDate)
+            {
+                start = $"{start}{DateTime.UtcNow:yyyy/MM/dd}/";
+            }
             var replaced = $"{fileName.Replace($"{configEntry.WatchFolder}{Path.DirectorySeparatorChar}", string.Empty).Replace("\\", "/")}";
             if (configEntry.AddRandomGuidToFiles)
             {

@@ -11,5 +11,6 @@
         public int GraceSeconds { get; set; }
         public string FileMask { get; set; }
         public bool AddRandomGuidToFiles { get; set; }
+        public bool PrependDate { get; set; }
     }
 }
