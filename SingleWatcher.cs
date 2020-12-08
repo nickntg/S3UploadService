@@ -108,7 +108,8 @@ namespace S3UploadService
         {
             try
             {
-                _s3Helper.UploadFile(_configEntry, file.FileName);
+                var guid = Guid.NewGuid();
+                _s3Helper.UploadFile(_configEntry, file.FileName, guid);
                 return true;
             }
             catch (Exception e)

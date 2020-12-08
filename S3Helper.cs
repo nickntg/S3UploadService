@@ -10,7 +10,7 @@ namespace S3UploadService
 {
     public interface IS3Helper
     {
-        void UploadFile(ConfigEntry configEntry, string fileName);
+        void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid);
     }
 
     public class S3Helper : IS3Helper
@@ -23,14 +23,14 @@ namespace S3UploadService
             CreateClient(settings);
         }
 
-        public void UploadFile(ConfigEntry configEntry, string fileName)
+        public void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid)
         {
             var result = _s3Client.PutObjectAsync(
                 new PutObjectRequest
                 {
                     FilePath = fileName,
                     BucketName = _bucket,
-                    Key = CreateKey(configEntry, fileName)
+                    Key = CreateKey(configEntry, fileName, randomGuid)
                 }).Result;
 
             if (result.HttpStatusCode != HttpStatusCode.OK)
@@ -39,7 +39,7 @@ namespace S3UploadService
             }
         }
 
-        private string CreateKey(ConfigEntry configEntry, string fileName)
+        private string CreateKey(ConfigEntry configEntry, string fileName, Guid randomGuid)
         {
             var start = $"{configEntry.StartKey}/";
             if (configEntry.PrependDate)
@@ -52,6 +52,15 @@ namespace S3UploadService
                 var fi = new FileInfo(fileName);
                 var guid = Guid.NewGuid().ToString("N");
                 replaced = replaced.Replace(fi.Name, $"{guid}.{fi.Name}");
+            }
+
+            if (configEntry.AddRandomGuidToLeafDir)
+            {
+                var index = replaced.LastIndexOf("/", StringComparison.Ordinal);
+                if (index > 0)
+                {
+                    replaced = replaced.Insert(index, $"/{randomGuid}");
+                }
             }
 
             return $"{start}{replaced}";
