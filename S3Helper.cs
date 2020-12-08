@@ -11,6 +11,7 @@ namespace S3UploadService
     public interface IS3Helper
     {
         void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid);
+        void UploadFile(ConfigEntry configEntry, string fileName, string contents, Guid randomGuid);
     }
 
     public class S3Helper : IS3Helper
@@ -21,6 +22,22 @@ namespace S3UploadService
         public S3Helper(AppSettings settings)
         {
             CreateClient(settings);
+        }
+
+        public void UploadFile(ConfigEntry configEntry, string fileName, string contents, Guid randomGuid)
+        {
+            var result = _s3Client.PutObjectAsync(
+                new PutObjectRequest
+                {
+                    ContentBody = contents,
+                    BucketName = _bucket,
+                    Key = CreateKey(configEntry, fileName, randomGuid)
+                }).Result;
+
+            if (result.HttpStatusCode != HttpStatusCode.OK)
+            {
+                throw new InvalidOperationException($"S3 upload error ({result.HttpStatusCode})");
+            }
         }
 
         public void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid)

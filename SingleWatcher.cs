@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace S3UploadService
 {
@@ -108,8 +109,41 @@ namespace S3UploadService
         {
             try
             {
+                /*
+                 * This should be placed somewhere where it could be dynamically called. It
+                 * is much more appropriate for an extension of sorts rather than build-in code.
+                 *
+                 * i.e., it's a hack.
+                 */
+
+                var dir = new FileInfo(file.FileName).DirectoryName;
+                var files = Directory.GetFiles(dir, "*.txt", SearchOption.TopDirectoryOnly);
+                var aFile = files.FirstOrDefault(x => x.ToLower().EndsWith("_a.txt"));
+                var bFile = files.FirstOrDefault(x => x.ToLower().EndsWith("_b.txt"));
+
+                if (string.IsNullOrEmpty(aFile) || string.IsNullOrEmpty(bFile))
+                {
+                    throw new InvalidOperationException("A and/or B files not present - aborting to wait some more");
+                }
+
                 var guid = Guid.NewGuid();
+
+                _s3Helper.UploadFile(_configEntry, aFile, guid);
+                _s3Helper.UploadFile(_configEntry, bFile, guid);
                 _s3Helper.UploadFile(_configEntry, file.FileName, guid);
+
+                var index = new IndexModel
+                {
+                    pdf = new FileInfo(file.FileName).Name,
+                    a = new FileInfo(aFile).Name,
+                    b = new FileInfo(bFile).Name
+                };
+
+                _s3Helper.UploadFile(_configEntry, $"{dir}/index.json", JsonConvert.SerializeObject(index), guid);
+
+                MoveFile(new FileDetails(aFile), _configEntry.DoneFolder);
+                MoveFile(new FileDetails(bFile), _configEntry.DoneFolder);
+
                 return true;
             }
             catch (Exception e)
