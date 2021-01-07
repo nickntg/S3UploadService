@@ -16,11 +16,13 @@ namespace S3UploadService
 
     public class S3Helper : IS3Helper
     {
-        private AmazonS3Client _s3Client;
-        private string         _bucket;
+        private AmazonS3Client  _s3Client;
+        private string          _bucket;
+        private IUploadObserver _uploadObserver;
  
-        public S3Helper(AppSettings settings)
+        public S3Helper(AppSettings settings, IUploadObserver uploadObserver)
         {
+            _uploadObserver = uploadObserver;
             CreateClient(settings);
         }
 
@@ -38,6 +40,8 @@ namespace S3UploadService
             {
                 throw new InvalidOperationException($"S3 upload error ({result.HttpStatusCode})");
             }
+            
+            _uploadObserver.FileUploaded();
         }
 
         public void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid)
@@ -54,6 +58,8 @@ namespace S3UploadService
             {
                 throw new InvalidOperationException($"S3 upload error ({result.HttpStatusCode})");
             }
+
+            _uploadObserver.FileUploaded();
         }
 
         private string CreateKey(ConfigEntry configEntry, string fileName, Guid randomGuid)

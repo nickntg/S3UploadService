@@ -12,15 +12,17 @@ namespace S3UploadService
 {
     public class Worker : BackgroundService
     {
-        private readonly ILogger<Worker>   _logger;
-        private readonly AppSettings       _settings;
-        private readonly IS3Helper         _s3Helper;
+        private readonly ILogger<Worker>    _logger;
+        private readonly AppSettings        _settings;
+        private readonly IS3Helper          _s3Helper;
+        private readonly IInactivityWatcher _inactivityWatcher;
 
-        public Worker(ILogger<Worker> logger, AppSettings settings, IS3Helper s3Helper)
+        public Worker(ILogger<Worker> logger, AppSettings settings, IS3Helper s3Helper, IInactivityWatcher inactivityWatcher)
         {
             _logger = logger;
             _settings = settings;
             _s3Helper = s3Helper;
+            _inactivityWatcher = inactivityWatcher;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -31,6 +33,8 @@ namespace S3UploadService
                 watcher.Start(stoppingToken);
             }
 
+            _inactivityWatcher.Start(stoppingToken);
+            
             while (!stoppingToken.IsCancellationRequested)
             {
                 Thread.Sleep(5000);

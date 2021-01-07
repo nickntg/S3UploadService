@@ -23,9 +23,11 @@ namespace S3UploadService
                         builder.SetMinimumLevel(LogLevel.Trace);
                         builder.AddNLog(hostContext.Configuration);
                     });
-                    services.AddHostedService<Worker>();
-                    services.AddSingleton<IS3Helper, S3Helper>();
                     services.AddSingleton(hostContext.Configuration.GetSection("AppSettings").Get<AppSettings>());
+                    services.AddSingleton<IInactivityWatcher, InactivityWatcher>();
+                    services.AddSingleton<IUploadObserver, UploadObserver>();
+                    services.AddSingleton<IS3Helper, S3Helper>();
+                    services.AddHostedService<Worker>();
                 }).UseWindowsService();
     }
 }
