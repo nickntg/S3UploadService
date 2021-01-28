@@ -117,13 +117,26 @@ namespace S3UploadService
                  */
 
                 var dir = new FileInfo(file.FileName).DirectoryName;
+
                 var files = Directory.GetFiles(dir, "*.txt", SearchOption.TopDirectoryOnly);
+
                 var aFile = files.FirstOrDefault(x => x.ToLower().EndsWith("_a.txt"));
                 var bFile = files.FirstOrDefault(x => x.ToLower().EndsWith("_b.txt"));
 
                 if (string.IsNullOrEmpty(aFile) || string.IsNullOrEmpty(bFile))
                 {
-                    throw new InvalidOperationException("A and/or B files not present - aborting to wait some more");
+                    if (_configEntry.FakeAAndBFiles)
+                    {
+                        _logger.LogDebug("Faking A/B files");
+                        aFile = $"{dir}\\fake_a.txt";
+                        bFile = $"{dir}\\fake_b.txt";
+                        File.WriteAllText(aFile, "FAKE A TXT");
+                        File.WriteAllText(bFile, "FAKE B TXT");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("A and/or B files not present - aborting to wait some more");
+                    }
                 }
 
                 var guid = Guid.NewGuid();

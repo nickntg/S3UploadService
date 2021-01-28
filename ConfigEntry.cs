@@ -12,6 +12,11 @@
         public string FileMask { get; set; }
         public bool AddRandomGuidToFiles { get; set; }
         public bool AddRandomGuidToLeafDir { get; set; }
+        public bool FakeAAndBFiles { get; set; }
         public bool PrependDate { get; set; }
+        public string S3AccessKey { get; set; }
+        public string S3SecretKey { get; set; }
+        public string S3Region { get; set; }
+        public string S3Bucket { get; set; }
     }
 }

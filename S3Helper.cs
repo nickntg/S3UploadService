@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using Amazon;
@@ -16,23 +17,23 @@ namespace S3UploadService
 
     public class S3Helper : IS3Helper
     {
-        private AmazonS3Client  _s3Client;
-        private string          _bucket;
-        private IUploadObserver _uploadObserver;
+        private readonly Dictionary<string, AmazonS3Client> _clients;
+        private readonly IUploadObserver                    _uploadObserver;
  
-        public S3Helper(AppSettings settings, IUploadObserver uploadObserver)
+        public S3Helper(IUploadObserver uploadObserver)
         {
             _uploadObserver = uploadObserver;
-            CreateClient(settings);
+            _clients = new Dictionary<string, AmazonS3Client>();
         }
 
         public void UploadFile(ConfigEntry configEntry, string fileName, string contents, Guid randomGuid)
         {
-            var result = _s3Client.PutObjectAsync(
+            var client = CreateClient(configEntry);
+            var result = client.PutObjectAsync(
                 new PutObjectRequest
                 {
                     ContentBody = contents,
-                    BucketName = _bucket,
+                    BucketName = configEntry.S3Bucket,
                     Key = CreateKey(configEntry, fileName, randomGuid)
                 }).Result;
 
@@ -46,11 +47,12 @@ namespace S3UploadService
 
         public void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid)
         {
-            var result = _s3Client.PutObjectAsync(
+            var client = CreateClient(configEntry);
+            var result = client.PutObjectAsync(
                 new PutObjectRequest
                 {
                     FilePath = fileName,
-                    BucketName = _bucket,
+                    BucketName = configEntry.S3Bucket,
                     Key = CreateKey(configEntry, fileName, randomGuid)
                 }).Result;
 
@@ -89,12 +91,17 @@ namespace S3UploadService
             return $"{start}{replaced}";
         }
 
-        private void CreateClient(AppSettings settings)
+        private AmazonS3Client CreateClient(ConfigEntry configEntry)
         {
-            _s3Client = new AmazonS3Client(
-                new BasicAWSCredentials(settings.S3AccessKey, settings.S3SecretKey),
-                RegionEndpoint.GetBySystemName(settings.Region));
-            _bucket = settings.Bucket;
+            var key = $"{configEntry.S3AccessKey}_{configEntry.S3AccessKey}_{configEntry.S3Region}_{configEntry.S3Bucket}";
+            if (!_clients.ContainsKey(key))
+            {
+                _clients.Add(key, new AmazonS3Client(
+                    new BasicAWSCredentials(configEntry.S3AccessKey, configEntry.S3SecretKey),
+                    RegionEndpoint.GetBySystemName(configEntry.S3Region)));
+            }
+
+            return _clients[key];
         }
     }
 }
