@@ -1,25 +1,32 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace S3UploadService
 {
     public interface IUploadObserver
     {
-        void FileUploaded();
-        DateTime LastUploadTime();
+        void FileUploaded(string name);
+        DateTime LastUploadTime { get; set; }
+        Dictionary<string, int> UploadCounts { get; set; }
     }
 
     public class UploadObserver : IUploadObserver
     {
-        private DateTime _lastDateTime = DateTime.UtcNow;
+        public DateTime LastUploadTime { get; set; } = DateTime.UtcNow;
+        public Dictionary<string, int> UploadCounts { get; set; } = new Dictionary<string, int>();
 
-        public void FileUploaded()
+        public void FileUploaded(string name)
         {
-            _lastDateTime = DateTime.UtcNow;
-        }
+            lock (UploadCounts)
+            {
+                if (!UploadCounts.ContainsKey(name))
+                {
+                    UploadCounts.Add(name, 0);
+                }
 
-        public DateTime LastUploadTime()
-        {
-            return _lastDateTime;
+                UploadCounts[name]++;
+            }
+            LastUploadTime = DateTime.UtcNow;
         }
     }
 }

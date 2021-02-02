@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using RestSharp;
 
 namespace S3UploadService
 {
@@ -13,12 +17,16 @@ namespace S3UploadService
     
     public class InactivityWatcher : IInactivityWatcher
     {
-        private readonly AppSettings     _appSettings;
-        private readonly IUploadObserver _uploadObserver;
-        private          DateTime        _silencePeriod = DateTime.UtcNow;
+        private readonly ILogger<InactivityWatcher> _logger;
+        private readonly AppSettings                _appSettings;
+        private readonly IUploadObserver            _uploadObserver;
+        private          DateTime                   _silencePeriod    = DateTime.UtcNow;
+        private readonly Dictionary<string, int>    _lastUploadCounts = new Dictionary<string, int>();
+        private const    int                        MonitorSeconds    = 60;
         
-        public InactivityWatcher(AppSettings appSettings, IUploadObserver uploadObserver)
+        public InactivityWatcher(ILogger<InactivityWatcher> logger, AppSettings appSettings, IUploadObserver uploadObserver)
         {
+            _logger = logger;
             _appSettings = appSettings;
             _uploadObserver = uploadObserver;
         }
@@ -36,6 +44,8 @@ namespace S3UploadService
 
         public async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var last = DateTime.UtcNow;
+            
             while (!stoppingToken.IsCancellationRequested)
             {
                 await Task.Delay(1000, stoppingToken);
@@ -45,17 +55,60 @@ namespace S3UploadService
                     return;
                 }
 
+                if (DateTime.UtcNow.Subtract(last).TotalSeconds > MonitorSeconds)
+                {
+                    Report();
+                    last = DateTime.UtcNow;
+                }
+
                 if (IsSilencePeriod())
                 {
                     continue;
                 }
 
-                if (DateTime.UtcNow.Subtract(_uploadObserver.LastUploadTime()).TotalSeconds >
+                if (DateTime.UtcNow.Subtract(_uploadObserver.LastUploadTime).TotalSeconds >
                     _appSettings.InactivityAlertInSeconds)
                 {
                     SendEmailAlert();
                     _silencePeriod = DateTime.UtcNow.AddMinutes(10);
                 }
+            }
+        }
+
+        private void Report()
+        {
+            var current = _uploadObserver.UploadCounts.ToArray();
+            foreach (var x in current)
+            {
+                var key = x.Key;
+                var value = x.Value;
+                if (!_lastUploadCounts.ContainsKey(key))
+                {
+                    _lastUploadCounts.Add(key, 0);
+                }
+
+                var currentValue = value;
+                var count = currentValue - _lastUploadCounts[key];
+                _lastUploadCounts[key] = currentValue;
+                ReportMetric(key, DateTime.UtcNow, count);
+            }
+        }
+
+        private void ReportMetric(string name, DateTime dt, int count)
+        {
+            try
+            {
+                var client = new RestClient(_appSettings.MonitoringUrl);
+                var request = new RestRequest("/dataservice/api/data", Method.GET);
+                request.AddParameter("parameters", "name,dt,count");
+                request.AddParameter("values", $"{name},{dt:yyyy-MM-dd HH:mm:ss},{count}");
+                request.AddParameter("name", "simple_count_post");
+                request.Timeout = 10;
+                var response = client.Execute(request);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating statistics");
             }
         }
 
@@ -87,9 +140,13 @@ namespace S3UploadService
                     Credentials = new NetworkCredential(_appSettings.SmtpUserName, _appSettings.SmtpPassword)
                 };
 
-                client.Send(new MailMessage(_appSettings.SmtpFrom, _appSettings.SmtpTo, "S3 Uploader Alert", $"More than {TimeSpan.FromSeconds(_appSettings.InactivityAlertInSeconds).TotalMinutes} minutes have elapsed without an invoice being uploaded to S3.\r\n\r\nThis alarm will be disabled for the next ten minutes."));
+                client.Send(new MailMessage(_appSettings.SmtpFrom, _appSettings.SmtpTo, "S3 Uploader Alert",
+                    $"More than {TimeSpan.FromSeconds(_appSettings.InactivityAlertInSeconds).TotalMinutes} minutes have elapsed without an invoice being uploaded to S3.\r\n\r\nThis alarm will be disabled for the next ten minutes."));
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending email");
+            }
         }
     }
 }

@@ -12,5 +12,6 @@
         public string SmtpTo { get; set; }
         public string InactivityAlertSilenceStartTime { get; set; }
         public string InactivityAlertSilenceEndTime { get; set; }
+        public string MonitoringUrl { get; set; }
     }
 }

@@ -2,6 +2,7 @@
 {
     public class ConfigEntry
     {
+        public string Name { get; set; }
         public string WatchFolder { get; set; }
         public string DoneFolder { get; set; }
         public string FailFolder { get; set; }

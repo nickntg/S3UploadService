@@ -41,8 +41,8 @@ namespace S3UploadService
             {
                 throw new InvalidOperationException($"S3 upload error ({result.HttpStatusCode})");
             }
-            
-            _uploadObserver.FileUploaded();
+
+            _uploadObserver.FileUploaded(configEntry.Name);
         }
 
         public void UploadFile(ConfigEntry configEntry, string fileName, Guid randomGuid)
@@ -61,7 +61,7 @@ namespace S3UploadService
                 throw new InvalidOperationException($"S3 upload error ({result.HttpStatusCode})");
             }
 
-            _uploadObserver.FileUploaded();
+            _uploadObserver.FileUploaded(configEntry.Name);
         }
 
         private string CreateKey(ConfigEntry configEntry, string fileName, Guid randomGuid)
