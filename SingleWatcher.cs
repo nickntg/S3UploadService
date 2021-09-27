@@ -117,6 +117,7 @@ namespace S3UploadService
                  */
 
                 var dir = new FileInfo(file.FileName).DirectoryName;
+                var seriesAndContinuation = ExtractSeriesAndContinuationFromFileName(file.FileName);
 
                 var files = Directory.GetFiles(dir, "*.txt", SearchOption.TopDirectoryOnly);
 
@@ -125,31 +126,44 @@ namespace S3UploadService
 
                 if (string.IsNullOrEmpty(aFile) || string.IsNullOrEmpty(bFile))
                 {
-                    if (_configEntry.FakeAAndBFiles)
+                    // Do we expect A/B files?
+                    if (DoesFileBelongInSeries(seriesAndContinuation, _configEntry.WaitForAAndBFilesSeries))
                     {
-                        _logger.LogDebug("Faking A/B files");
-                        aFile = $"{dir}\\fake_a.txt";
-                        bFile = $"{dir}\\fake_b.txt";
-                        File.WriteAllText(aFile, "FAKE A TXT");
-                        File.WriteAllText(bFile, "FAKE B TXT");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("A and/or B files not present - aborting to wait some more");
+                        // Do we fake A/B files?
+                        if (DoesFileBelongInSeries(seriesAndContinuation, _configEntry.FakeAAndBFilesSeries))
+                        {
+                            _logger.LogDebug("Faking A/B files");
+                            aFile = $"{dir}\\fake_a.txt";
+                            bFile = $"{dir}\\fake_b.txt";
+                            File.WriteAllText(aFile, "FAKE A TXT");
+                            File.WriteAllText(bFile, "FAKE B TXT");
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("A and/or B files not present - aborting to wait some more");
+                        }
                     }
                 }
 
                 var guid = Guid.NewGuid();
 
-                _s3Helper.UploadFile(_configEntry, aFile, guid);
-                _s3Helper.UploadFile(_configEntry, bFile, guid);
+                if (!string.IsNullOrEmpty(aFile))
+                {
+                    _s3Helper.UploadFile(_configEntry, aFile, guid);
+                }
+
+                if (!string.IsNullOrEmpty(bFile))
+                {
+                    _s3Helper.UploadFile(_configEntry, bFile, guid);
+                }
+
                 _s3Helper.UploadFile(_configEntry, file.FileName, guid);
 
                 var index = new IndexModel
                 {
                     pdf = new FileInfo(file.FileName).Name,
-                    a = new FileInfo(aFile).Name,
-                    b = new FileInfo(bFile).Name
+                    a = string.IsNullOrEmpty(aFile) ? null : new FileInfo(aFile).Name,
+                    b = string.IsNullOrEmpty(bFile) ? null : new FileInfo(bFile).Name
                 };
 
                 _s3Helper.UploadFile(_configEntry, $"{dir}/index.json", JsonConvert.SerializeObject(index), guid);
@@ -194,6 +208,33 @@ namespace S3UploadService
             }
 
             File.Move(source, target, true);
+        }
+
+        private string ExtractSeriesAndContinuationFromFileName(string fileName)
+        {
+            var pos = fileName.IndexOf("_", StringComparison.InvariantCulture);
+            if (pos < 0 || pos == fileName.Length - 1)
+            {
+                throw new InvalidOperationException($"Filename {fileName} does not look like a valid PDF to upload");
+            }
+
+            return fileName.Substring(pos+1).Replace(".pdf", "").Replace(".PDF", "");
+        }
+
+        private bool DoesFileBelongInSeries(string seriesAndContinuation, string series)
+        {
+            if (string.IsNullOrEmpty(series))
+            {
+                return false;
+            }
+
+            if (series.Contains("*"))
+            {
+                return true;
+            }
+
+            var seriesAr = series.Split(",");
+            return seriesAr.Any(seriesAndContinuation.StartsWith);
         }
     }
 }
