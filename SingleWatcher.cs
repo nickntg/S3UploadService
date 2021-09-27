@@ -168,8 +168,15 @@ namespace S3UploadService
 
                 _s3Helper.UploadFile(_configEntry, $"{dir}/index.json", JsonConvert.SerializeObject(index), guid);
 
-                MoveFile(new FileDetails(aFile), _configEntry.DoneFolder);
-                MoveFile(new FileDetails(bFile), _configEntry.DoneFolder);
+                if (!string.IsNullOrEmpty(aFile))
+                {
+                    MoveFile(new FileDetails(aFile), _configEntry.DoneFolder);
+                }
+
+                if (!string.IsNullOrEmpty(bFile))
+                {
+                    MoveFile(new FileDetails(bFile), _configEntry.DoneFolder);
+                }
 
                 return true;
             }
