@@ -219,7 +219,7 @@ namespace S3UploadService
 
         private string ExtractSeriesAndContinuationFromFileName(string fileName)
         {
-            var pos = fileName.IndexOf("_", StringComparison.InvariantCulture);
+            var pos = fileName.LastIndexOf("_", StringComparison.InvariantCulture);
             if (pos < 0 || pos == fileName.Length - 1)
             {
                 throw new InvalidOperationException($"Filename {fileName} does not look like a valid PDF to upload");
@@ -241,7 +241,7 @@ namespace S3UploadService
             }
 
             var seriesAr = series.Split(",");
-            return seriesAr.Any(seriesAndContinuation.StartsWith);
+            return seriesAr.Any(s => seriesAndContinuation.StartsWith($"{s}", StringComparison.InvariantCulture));
         }
     }
 }
